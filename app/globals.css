@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* â”€â”€ AdSense self-collapsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   When AdSense can't fill a slot it sets data-ad-status="unfilled"
+   on the <ins> element. We collapse the whole wrapper to 0 height
+   so no empty white space is left behind.
+   ---------------------------------------------------------------- */
+.ad-slot-wrapper:has(ins[data-ad-status="unfilled"]) {
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Also hide if adsbygoogle hasn't rendered anything (no child iframe) */
+.ad-slot-wrapper:has(.adsbygoogle:not([data-ad-status])) {
+  /* Keep space while loading â€” remove once status is known */
+}
