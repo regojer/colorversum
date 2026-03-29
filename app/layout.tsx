@@ -69,6 +69,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
       </head>
+      <meta name="google-site-verification" content="5YFuBNzldzucnp8Z6ZIglMA2cVAnBpAlfIondWXwViE" />
       <body
         className={`${jakarta.variable} font-sans overflow-x-hidden antialiased`}
       >
