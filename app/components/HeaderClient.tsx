@@ -220,13 +220,6 @@ export default function HeaderClient({
               </div>
             </div>
 
-
-            <Link
-              href={`/${lang}/generator`}
-              className="text-[13.5px] font-semibold text-gray-500 hover:text-gray-900 hover:bg-black/[0.04] px-3.5 py-[7px] rounded-lg transition-all whitespace-nowrap"
-            >
-              {t.aiGenerator}
-            </Link>
           </div>
 
           {/* Desktop right */}
@@ -247,7 +240,6 @@ export default function HeaderClient({
                 className="flex-1 bg-transparent border-none outline-none text-[13px] font-medium text-gray-900 placeholder:text-gray-400 min-w-0"
               />
             </form>
-
           </div>
 
           {/* Mobile right */}
@@ -380,19 +372,7 @@ export default function HeaderClient({
             </Link>
           ))}
 
-          <div className="h-px bg-gray-100 my-1.5" />
-
-          <Link
-            href={`/${lang}/generator`}
-            onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[14px] font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <span className="text-[17px] w-6 text-center shrink-0">✨</span>
-            {t.aiGenerator}
-          </Link>
-
         </div>
-
 
       </div>
     </>

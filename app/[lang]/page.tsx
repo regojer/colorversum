@@ -143,7 +143,7 @@ export default async function HomePage({
     featuredRes,
     popularRes,
     easyRes,
-    catPreviewRes,
+    catPreviewRes,  // ← now from category_preview_images view
     topicPreviewRes,
   ] = await Promise.all([
     // Categories (translated)
@@ -153,7 +153,7 @@ export default async function HomePage({
       .eq("language", lang)
       .limit(12),
 
-    // English slugs for emoji + preview lookup
+    // English slugs — still needed for emoji lookup
     supabase
       .from("category_translations")
       .select("category_id, slug")
@@ -184,15 +184,10 @@ export default async function HomePage({
       .order("views", { ascending: false })
       .limit(8),
 
-    // Category preview images (English slug is in coloring_pages.category_slug)
+    // Category preview images — from dedicated view (max 4 per category, pre-filtered)
     supabase
-      .from("coloring_pages")
-      .select("image_thumb_url, image_url, category_slug")
-      .eq("is_ready", true)
-      .eq("is_published", true)
-      .not("category_slug", "is", null)
-      .order("views", { ascending: false })
-      .limit(3000),
+      .from("category_preview_images")
+      .select("category_id, image_thumb_url, image_url"),
 
     // Topic preview images
     supabase
@@ -208,27 +203,19 @@ export default async function HomePage({
   // ── Build lookup maps ──────────────────────────────────────────
   const categories = (catTransRes.data ?? []) as CategoryRow[];
 
-  // category_id → English slug (for emoji)
+  // category_id → English slug (still needed for emoji)
   const catIdToEnSlug: Record<string, string> = {};
   for (const row of (enCatTransRes.data ?? []) as Array<{ category_id: string; slug: string }>) {
     catIdToEnSlug[row.category_id] = row.slug;
   }
 
-  // English slug → preview images[]
-  const enSlugToPreviews: Record<string, string[]> = {};
-  for (const img of (catPreviewRes.data ?? []) as Array<{ category_slug: string; image_thumb_url: string | null; image_url: string | null }>) {
-    if (!img.category_slug) continue;
-    const thumb = img.image_thumb_url ?? img.image_url;
-    if (!thumb) continue;
-    if (!enSlugToPreviews[img.category_slug]) enSlugToPreviews[img.category_slug] = [];
-    if (enSlugToPreviews[img.category_slug].length < 4) enSlugToPreviews[img.category_slug].push(thumb);
-  }
-
-  // category_id → preview images (via English slug bridge)
+  // category_id → preview images (direct from view — no slug bridge)
   const categoryPreviews: Record<string, string[]> = {};
-  for (const cat of categories) {
-    const enSlug = catIdToEnSlug[cat.category_id];
-    if (enSlug && enSlugToPreviews[enSlug]) categoryPreviews[cat.category_id] = enSlugToPreviews[enSlug];
+  for (const row of (catPreviewRes.data ?? []) as Array<{ category_id: string; image_thumb_url: string | null; image_url: string | null }>) {
+    const thumb = row.image_thumb_url ?? row.image_url;
+    if (!thumb) continue;
+    if (!categoryPreviews[row.category_id]) categoryPreviews[row.category_id] = [];
+    categoryPreviews[row.category_id].push(thumb);
   }
 
   // topic_id → preview images[]
@@ -293,19 +280,37 @@ export default async function HomePage({
       <div
         className="rounded-b-[44px] overflow-hidden relative"
         style={{
-          background: "linear-gradient(180deg,#6994AE 0%,#7BA3BA 12%,#8EB3C6 26%,#A5C5D3 42%,#BFCFD8 57%,#D5E4EA 70%,#E8F2F7 83%,#F4F9FC 93%,#FAFCFD 100%)",
           paddingTop: 64,
         }}
       >
+        {/* Hero background — watercolor splash, desktop & mobile variants */}
+        <div
+          className="absolute inset-0 hidden sm:block"
+          style={{
+            backgroundImage: "url('/hero-bg-desktop.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+        <div
+          className="absolute inset-0 sm:hidden"
+          style={{
+            backgroundImage: "url('/hero-bg-mobile.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
         <div className="max-w-[1100px] mx-auto px-5 sm:px-8 pt-12 sm:pt-20 pb-10 sm:pb-16 flex flex-col items-center text-center relative z-10">
-          <div className="hidden xs:inline-flex items-center gap-2 bg-white/65 border border-white/75 backdrop-blur-md rounded-full px-3 sm:px-4 py-1.5 mb-5 sm:mb-7 text-[11px] sm:text-[12.5px] font-bold text-gray-700">
+          <div className="hidden xs:inline-flex items-center gap-2 bg-white/75 border border-white/60 backdrop-blur-md rounded-full px-3 sm:px-4 py-1.5 mb-5 sm:mb-7 text-[11px] sm:text-[12.5px] font-bold text-gray-700">
             <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_0_3px_rgba(34,197,94,.2)] shrink-0" />
             {t.heroBadge}
           </div>
-          <h1 className="font-black text-white leading-none mb-5 whitespace-pre-line" style={{ fontSize: "clamp(40px,7.5vw,84px)", letterSpacing: "-.04em", textShadow: "0 2px 24px rgba(50,80,110,.22)" }}>
+          <h1 className="font-black text-white leading-none mb-5 whitespace-pre-line" style={{ fontSize: "clamp(40px,7.5vw,84px)", letterSpacing: "-.04em", textShadow: "0 1px 12px rgba(80,120,160,.35), 0 2px 4px rgba(0,0,0,.12)" }}>
             {t.heroTitle}
           </h1>
-          <p className="text-white/80 text-[15px] sm:text-[17px] leading-relaxed max-w-[480px] mb-7 sm:mb-9 px-2 sm:px-0">
+          <p className="text-gray-600 text-[15px] sm:text-[17px] leading-relaxed max-w-[480px] mb-7 sm:mb-9 px-2 sm:px-0">
             {t.heroSubtitle}
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap mb-7">
@@ -316,8 +321,8 @@ export default async function HomePage({
           </div>
           <div className="hidden sm:flex items-center justify-center gap-6 flex-wrap mb-1">
             {[t.freeToPrint, t.noSignUp, t.newEveryDay].map(txt => (
-              <span key={txt} className="flex items-center gap-1.5 text-[13px] font-semibold text-white/75">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span key={txt} className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-500">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="text-blue-500"><polyline points="20 6 9 17 4 12"/></svg>
                 {txt}
               </span>
             ))}
@@ -330,10 +335,10 @@ export default async function HomePage({
       <div className="border-b border-gray-200 bg-white">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-8 grid grid-cols-2 md:grid-cols-4">
           {([
-            { stat: "2.4M+",   label: t.trustDownloaded },
-            { stat: "60,000+", label: t.trustFreePages },
+            { stat: "1M+",   label: t.trustDownloaded },
+            { stat: "10,000+", label: t.trustFreePages },
             { stat: "Free",    label: t.trustNoCreditCard },
-            { stat: "300",     label: t.trustAddedWeekly },
+            { stat: "100+",     label: t.trustAddedWeekly },
           ] as { stat: string; label: string }[]).map((item, i) => (
             <div key={i} className={["flex flex-col items-center justify-center py-4 px-3 gap-0.5", i % 2 === 0 ? "border-r border-gray-200" : "", i < 2 ? "border-b border-gray-200 md:border-b-0" : "", i < 3 ? "md:border-r md:border-gray-200" : ""].join(" ")}>
               <span className="text-[15px] sm:text-[17px] font-black text-gray-900 leading-none">{item.stat}</span>
@@ -503,12 +508,11 @@ export default async function HomePage({
           <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-white/5" />
           <div className="absolute -bottom-10 right-40 w-40 h-40 rounded-full bg-white/5" />
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 bg-white/15 border border-white/20 rounded-full px-4 py-1.5 mb-5 text-[12.5px] font-bold text-white/90">{t.ctaBadge}</div>
-            <h2 className="text-[clamp(24px,3.5vw,38px)] font-black text-white tracking-tight leading-tight mb-4 whitespace-pre-line">{t.ctaTitle}</h2>
-            <p className="text-white/70 text-[16px] max-w-md mx-auto mb-8 leading-relaxed">{t.ctaSubtitle}</p>
+            <h2 className="text-[clamp(24px,3.5vw,38px)] font-black text-white tracking-tight leading-tight mb-4">{t.ctaBrowseTitle}</h2>
+            <p className="text-white/70 text-[16px] max-w-lg mx-auto mb-8 leading-relaxed">{t.ctaBrowseSubtitle}</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href={`/${lang}/generator`} className="inline-flex items-center gap-2 bg-white text-blue-700 font-extrabold text-[15px] px-8 py-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,.25)] hover:-translate-y-0.5 transition-all">{t.tryGenerator}</Link>
-              <Link href={`/${lang}/pro`} className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold text-[15px] px-8 py-4 rounded-xl transition-all">{t.getPro}</Link>
+              <Link href={`/${lang}/browse`} className="inline-flex items-center gap-2 bg-white text-blue-700 font-extrabold text-[15px] px-8 py-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,.25)] hover:-translate-y-0.5 transition-all">{t.ctaBrowseBtn}</Link>
+              <Link href={`/${lang}/categories`} className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold text-[15px] px-8 py-4 rounded-xl transition-all">{t.ctaCategoriesBtn}</Link>
             </div>
           </div>
         </div>
