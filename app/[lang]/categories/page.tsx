@@ -6,6 +6,7 @@ import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import { getUI } from "@/lib/i18n";
 import { AdLeaderboard, AdRectangle } from "@/app/components/AdSlot";
+import { landingHreflang } from "@/lib/hreflang";
 
 export const revalidate = 3600;
 
@@ -42,10 +43,14 @@ export async function generateMetadata({
   const { lang } = await params;
   const tMeta = getUI(lang);
   const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com";
+  const hreflang = landingHreflang();
   return {
     title: `${tMeta.categoriesTitle} | colorversum`,
     description: tMeta.categoriesSeoTitle,
-    alternates: { canonical: `${BASE_URL}/${lang}/categories` },
+    alternates: {
+      ...hreflang.alternates,
+      canonical: `${BASE_URL}/${lang}/categories`,
+    },
   };
 }
 
@@ -90,26 +95,17 @@ export default async function CategoriesPage({
     .filter(c => c.topic_count > 0)
     .sort((a, b) => b.topic_count - a.topic_count);
 
-  // Preview images (keyed by English slug)
-  const enSlugs = [...new Set(categories.map(c => c.en_slug).filter(Boolean))];
-  const { data: previewImages } = enSlugs.length
-    ? await supabase
-        .from("coloring_pages")
-        .select("image_thumb_url, image_url, category_slug")
-        .in("category_slug", enSlugs)
-        .eq("is_published", true)
-        .eq("is_ready", true)
-        .order("views", { ascending: false })
-        .limit(400)
-    : { data: [] };
+  // Preview images — direct from view, keyed by category_id (no slug bridge needed)
+  const { data: catPreviewData } = await supabase
+    .from("category_preview_images")
+    .select("category_id, image_thumb_url, image_url");
 
-  const previewsByEnSlug: Record<string, string[]> = {};
-  for (const img of previewImages ?? []) {
-    if (!img.category_slug) continue;
-    const thumb = img.image_thumb_url ?? img.image_url;
+  const previewsByCatId: Record<string, string[]> = {};
+  for (const row of catPreviewData ?? []) {
+    const thumb = row.image_thumb_url ?? row.image_url;
     if (!thumb) continue;
-    if (!previewsByEnSlug[img.category_slug]) previewsByEnSlug[img.category_slug] = [];
-    if (previewsByEnSlug[img.category_slug].length < 4) previewsByEnSlug[img.category_slug].push(thumb);
+    if (!previewsByCatId[row.category_id]) previewsByCatId[row.category_id] = [];
+    previewsByCatId[row.category_id].push(thumb);
   }
 
   // Popular pages for the hero section
@@ -203,7 +199,7 @@ export default async function CategoriesPage({
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {categories.map((cat, i) => {
                 const emojiStr = emoji(cat.slug);
-                const previews = previewsByEnSlug[cat.en_slug] ?? [];
+                const previews = previewsByCatId[cat.category_id] ?? [];
                 return (
                   <Link
                     key={cat.category_id}

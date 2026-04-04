@@ -124,7 +124,10 @@ export async function generateMetadata({
       type: "website",
       url: `${BASE_URL}/${lang}`,
     },
-    ...landingHreflang(),
+    alternates: {
+      ...landingHreflang().alternates,
+      canonical: `${BASE_URL}/${lang}`,
+    },
   };
 }
 

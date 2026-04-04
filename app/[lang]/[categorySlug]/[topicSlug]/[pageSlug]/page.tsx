@@ -65,16 +65,21 @@ export async function generateMetadata({
     }
   }
 
+  const canonicalUrl = `${BASE_URL}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}`;
   return {
     title,
     description,
     openGraph: {
       title,
       description,
-      images: imageUrl ? [imageUrl] : [],
-      url: `${BASE_URL}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}`,
+      images: imageUrl ? [{ url: imageUrl, width: 1200, height: 1200, alt: title }] : [],
+      url: canonicalUrl,
+      type: "website",
     },
-    alternates,
+    alternates: {
+      ...(alternates as Record<string, unknown>),
+      canonical: canonicalUrl,
+    },
   };
 }
 
@@ -105,6 +110,7 @@ export default async function PageDetail({
     .single();
 
   if (!basePage) notFound();
+  if (!basePage.image_url) notFound(); // SEO: no image = no usable page
 
   type CPFull = {
     id: string; image_url: string | null; image_thumb_url: string | null;
@@ -114,17 +120,57 @@ export default async function PageDetail({
   };
   const cp = basePage as CPFull;
 
-  // ── Related pages — use landing_page_cards view (no !inner join) ──
-  const { data: relatedTranslations } = cp.topic_id
-    ? await supabase
-        .from("landing_page_cards")
-        .select("page_slug, title, image_thumb_url, image_url, difficulty, topic_slug, category_slug")
-        .eq("language", lang)
-        .eq("topic_id", cp.topic_id)
-        .neq("page_slug", pageSlug)
-        .order("views", { ascending: false })
-        .limit(6)
-    : { data: [] };
+  // ── Related pages + similar topics — all in parallel ──────────────
+  const [relatedTopicRes, relatedCategoryRes, similarTopicsRes] = await Promise.all([
+    // 1. Same topic — highest relevance
+    cp.topic_id
+      ? supabase
+          .from("landing_page_cards")
+          .select("page_slug, title, image_thumb_url, image_url, difficulty, topic_slug, category_slug")
+          .eq("language", lang)
+          .eq("topic_id", cp.topic_id)
+          .neq("page_slug", pageSlug)
+          .order("views", { ascending: false })
+          .limit(8)
+      : Promise.resolve({ data: [] }),
+
+    // 2. Same category, different topic — category-level fallback
+    supabase
+      .from("landing_page_cards")
+      .select("page_slug, title, image_thumb_url, image_url, difficulty, topic_slug, category_slug")
+      .eq("language", lang)
+      .eq("category_slug", categorySlug)
+      .neq("topic_id", cp.topic_id ?? "")
+      .neq("page_slug", pageSlug)
+      .order("views", { ascending: false })
+      .limit(8),
+
+    // 3. Similar topics — same category, different topic, for topic nav section
+    cp.topic_id
+      ? supabase
+          .from("topic_cards")
+          .select("topic_id, topic_slug, name, category_slug")
+          .eq("language", lang)
+          .eq("category_slug", categorySlug)
+          .neq("topic_id", cp.topic_id)
+          .limit(6)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  // Merge: same-topic pages first, fill to 12 with category pages (dedupe by slug)
+  type RelatedPage = {
+    page_slug: string; title: string;
+    image_thumb_url: string | null; image_url: string | null;
+    difficulty: string | null; topic_slug: string; category_slug: string;
+  };
+  const topicPages    = (relatedTopicRes.data    ?? []) as RelatedPage[];
+  const categoryPages = (relatedCategoryRes.data ?? []) as RelatedPage[];
+  const seenSlugs     = new Set(topicPages.map(p => p.page_slug));
+  const fillPages     = categoryPages.filter(p => !seenSlugs.has(p.page_slug));
+  const relatedPages  = [...topicPages, ...fillPages].slice(0, 12);
+
+  type SimilarTopic = { topic_id: string; topic_slug: string | null; name: string | null; category_slug: string | null };
+  const similarTopics = ((similarTopicsRes.data ?? []) as SimilarTopic[]).filter(t => !!t.topic_slug);
 
   const DIFFICULTY_BADGE: Record<string, string> = {
     easy:   "bg-green-100 text-green-800",
@@ -179,6 +225,8 @@ export default async function PageDetail({
                   src={cp.image_url}
                   alt={`${translation.title} coloring page printable`}
                   className="w-[92%] h-[92%] object-contain"
+                  loading="eager"
+                  fetchPriority="high"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm font-medium">Image generating…</div>
@@ -278,25 +326,22 @@ export default async function PageDetail({
           </section>
         )}
 
-        {/* Related pages */}
-        <section className="mt-12 sm:mt-14">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <h2 className="text-[20px] sm:text-[22px] font-extrabold text-gray-900 tracking-tight">
-              More {titleCase(topicSlug)} pages
-            </h2>
-            <Link href={`/${lang}/${categorySlug}/${topicSlug}`} className="text-[13.5px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
-              View all →
-            </Link>
-          </div>
-
-          {relatedTranslations && relatedTranslations.length > 0 ? (
+        {/* ── SECTION 1: Related Coloring Pages (same topic first, category fallback) ── */}
+        {relatedPages.length > 0 && (
+          <section className="mt-12 sm:mt-14">
+            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+              <div>
+                <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">You might also like</p>
+                <h2 className="text-[20px] sm:text-[22px] font-extrabold text-gray-900 tracking-tight">
+                  Related Coloring Pages
+                </h2>
+              </div>
+              <Link href={`/${lang}/${categorySlug}/${topicSlug}`} className="text-[13.5px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
+                See all {titleCase(topicSlug)} →
+              </Link>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {((relatedTranslations ?? []) as Array<{
-                  page_slug: string; title: string;
-                  image_thumb_url: string | null; image_url: string | null;
-                  difficulty: string | null; topic_slug: string; category_slug: string;
-                }>).map((page) => {
+              {relatedPages.map((page) => {
                 const badge = page.difficulty ? (DIFFICULTY_BADGE[page.difficulty.toLowerCase()] ?? null) : null;
                 const thumb = page.image_thumb_url ?? page.image_url;
                 return (
@@ -307,7 +352,7 @@ export default async function PageDetail({
                   >
                     <div className="aspect-square bg-[#FAFAFA] border-b border-gray-200 flex items-center justify-center relative overflow-hidden">
                       {thumb
-                        ? <img src={thumb} alt={`${page.title} coloring page printable`} className="w-[78%] h-[78%] object-contain group-hover:scale-[1.04] transition-transform" loading="lazy" />
+                        ? <img src={thumb} alt={`${page.title} coloring page`} className="w-[78%] h-[78%] object-contain group-hover:scale-[1.04] transition-transform" loading="lazy" />
                         : <span className="text-4xl text-gray-200">🎨</span>
                       }
                       {badge && page.difficulty && (
@@ -321,15 +366,78 @@ export default async function PageDetail({
                 );
               })}
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-2xl border border-gray-200 bg-gray-50 aspect-square animate-pulse" />
+          </section>
+        )}
+
+        {/* ── SECTION 2: Explore similar topics ───────────────────────── */}
+        {similarTopics.length > 0 && (
+          <section className="mt-12 sm:mt-14">
+            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+              <div>
+                <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">More to explore</p>
+                <h2 className="text-[20px] sm:text-[22px] font-extrabold text-gray-900 tracking-tight">
+                  Explore similar topics
+                </h2>
+              </div>
+              <Link href={`/${lang}/${categorySlug}`} className="text-[13.5px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
+                All {titleCase(categorySlug)} →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {similarTopics.map(topic => (
+                <Link
+                  key={topic.topic_id}
+                  href={`/${lang}/${categorySlug}/${topic.topic_slug}`}
+                  className="group flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-3.5 py-3 hover:border-blue-200 hover:shadow-[0_4px_16px_rgba(17,24,39,.08)] hover:-translate-y-0.5 transition-all"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13.5px] font-bold text-gray-800 group-hover:text-blue-600 transition-colors capitalize leading-snug line-clamp-2">
+                      {topic.name ?? titleCase(topic.topic_slug!)} coloring pages
+                    </p>
+                  </div>
+                  <svg className="shrink-0 text-gray-300 group-hover:text-blue-400 group-hover:translate-x-[3px] transition-all" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                </Link>
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
+        {/* ── JSON-LD ─────────────────────────────────────────── */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "ImageObject",
+                  "@id": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}#image`,
+                  "url": cp.image_url ?? "",
+                  "contentUrl": cp.image_url ?? "",
+                  "name": translation.title,
+                  "description": `Free printable ${translation.title.toLowerCase()} coloring page. Download as PDF instantly.`,
+                  "encodingFormat": "image/webp",
+                  "license": "https://creativecommons.org/licenses/by/4.0/",
+                  "acquireLicensePage": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/terms`,
+                  "creditText": "colorversum",
+                  "creator": { "@type": "Organization", "name": "colorversum", "url": process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com" },
+                  "isPartOf": { "@type": "WebPage", "url": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}` },
+                },
+                {
+                  "@type": "BreadcrumbList",
+                  "itemListElement": [
+                    { "@type": "ListItem", "position": 1, "name": "Home", "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}` },
+                    { "@type": "ListItem", "position": 2, "name": categorySlug.replace(/-/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()), "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}` },
+                    { "@type": "ListItem", "position": 3, "name": topicSlug.replace(/-/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()), "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}/${topicSlug}` },
+                    { "@type": "ListItem", "position": 4, "name": translation.title },
+                  ],
+                },
+              ],
+            }),
+          }}
+        />
       </main>
       <Footer lang={lang} />
     </>
