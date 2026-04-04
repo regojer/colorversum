@@ -277,10 +277,6 @@ export default async function PageDetail({
           {translation.title}
         </h1>
 
-        <div className="w-full h-[50px] sm:h-[90px] mb-6 sm:mb-7 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-[10.5px] font-bold uppercase tracking-widest text-gray-400">
-          ▤ Advertisement
-        </div>
-
         {/* ── Two-column layout ───────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 sm:gap-8 items-start">
 
