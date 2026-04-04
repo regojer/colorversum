@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -8,12 +8,10 @@ import PrintButton from "@/app/components/PrintButton";
 import DownloadButton from "@/app/components/DownloadButton";
 import { getUI } from "@/lib/i18n";
 import { AdLeaderboard, AdRectangle } from "@/app/components/AdSlot";
+import { DIFFICULTY_BADGE } from "@/lib/constants";
 import { pageHreflang, fetchCategorySlugsByLang, fetchTopicSlugsByLang, fetchPageSlugsByLang } from "@/lib/hreflang";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com";
 
 function titleCase(s: string) {
   return s.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -28,7 +26,6 @@ export async function generateMetadata({
   params: Promise<{ lang: string; categorySlug: string; topicSlug: string; pageSlug: string }>;
 }): Promise<Metadata> {
   const { lang, categorySlug, topicSlug, pageSlug } = await params;
-  const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com";
 
   const { data } = await supabase
     .from("coloring_page_translations")
@@ -39,21 +36,21 @@ export async function generateMetadata({
 
   if (!data) return {};
 
-  // Parallel: get image + topic/category IDs for hreflang
-  const [baseForMeta, basePageForHreflang] = await Promise.all([
-    supabase.from("coloring_pages").select("image_url, topic_id, category_slug").eq("id", data.coloring_page_id).single(),
-    supabase.from("coloring_pages").select("topic_id").eq("id", data.coloring_page_id).single(),
-  ]);
+  // Single query for base page data (image + topic/category IDs)
+  const { data: basePage } = await supabase
+    .from("coloring_pages")
+    .select("image_url, topic_id, category_slug")
+    .eq("id", data.coloring_page_id)
+    .single();
 
   const title       = `${data.title} — Free Printable PDF | colorversum`;
   const description = (data.description as string | null) ?? `Free printable ${data.title.toLowerCase()} coloring page. Download PDF instantly — no sign-up required.`;
-  const imageUrl    = baseForMeta.data?.image_url ?? null;
+  const imageUrl    = basePage?.image_url ?? null;
 
   // Hreflang — requires knowing slugs in all languages
   let alternates = {};
-  const topicId = baseForMeta.data?.topic_id;
+  const topicId = basePage?.topic_id;
   if (topicId) {
-    // Get category_id from base topics table
     const { data: baseTopic } = await supabase.from("topics").select("category_id").eq("id", topicId).single();
     if (baseTopic?.category_id) {
       const [catSlugs, topicSlugs, pageSlugs] = await Promise.all([
@@ -105,7 +102,7 @@ export default async function PageDetail({
   // ── Step 2: Get base page data separately ──────────────────────
   const { data: basePage } = await supabase
     .from("coloring_pages")
-    .select("id, image_url, image_thumb_url, pdf_url, difficulty, age_group, style, topic_id, category_slug, views, keyword")
+    .select("id, image_url, image_thumb_url, pdf_url, difficulty, age_group, style, topic_id, category_slug, views, keyword, created_at")
     .eq("id", translation.coloring_page_id)
     .single();
 
@@ -116,12 +113,12 @@ export default async function PageDetail({
     id: string; image_url: string | null; image_thumb_url: string | null;
     pdf_url: string | null; difficulty: string | null; age_group: string | null;
     style: string | null; topic_id: string | null; category_slug: string | null;
-    views: number | null; keyword: string | null;
+    views: number | null; keyword: string | null; created_at: string | null;
   };
   const cp = basePage as CPFull;
 
-  // ── Related pages + similar topics — all in parallel ──────────────
-  const [relatedTopicRes, relatedCategoryRes, similarTopicsRes] = await Promise.all([
+  // ── Related pages + similar topics + nav pages — all in parallel ──
+  const [relatedTopicRes, relatedCategoryRes, similarTopicsRes, nextIdRes, prevIdRes, randomPagesRes] = await Promise.all([
     // 1. Same topic — highest relevance
     cp.topic_id
       ? supabase
@@ -155,7 +152,69 @@ export default async function PageDetail({
           .neq("topic_id", cp.topic_id)
           .limit(6)
       : Promise.resolve({ data: [] }),
+
+    // 4. Next page in topic (by created_at)
+    cp.topic_id && cp.created_at
+      ? supabase
+          .from("coloring_pages")
+          .select("id")
+          .eq("topic_id", cp.topic_id)
+          .gt("created_at", cp.created_at)
+          .order("created_at", { ascending: true })
+          .limit(1)
+      : Promise.resolve({ data: [] }),
+
+    // 5. Previous page in topic (by created_at)
+    cp.topic_id && cp.created_at
+      ? supabase
+          .from("coloring_pages")
+          .select("id")
+          .eq("topic_id", cp.topic_id)
+          .lt("created_at", cp.created_at)
+          .order("created_at", { ascending: false })
+          .limit(1)
+      : Promise.resolve({ data: [] }),
+
+    // 6. Random pages from other categories — "Explore more"
+    supabase
+      .from("landing_page_cards")
+      .select("page_slug, title, image_thumb_url, image_url, difficulty, topic_slug, category_slug")
+      .eq("language", lang)
+      .neq("category_slug", categorySlug)
+      .order("views", { ascending: false })
+      .range(20, 35)
+      .limit(6),
   ]);
+
+  // ── Step 4: Fetch next/prev translations in parallel ──────────
+  type NavPage = { slug: string; title: string };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nextId: string | null = ((nextIdRes as any).data?.[0]?.id) ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prevId: string | null = ((prevIdRes as any).data?.[0]?.id) ?? null;
+
+  const [nextTransRes, prevTransRes] = await Promise.all([
+    nextId
+      ? supabase
+          .from("coloring_page_translations")
+          .select("slug, title")
+          .eq("coloring_page_id", nextId)
+          .eq("language", lang)
+          .single()
+      : Promise.resolve({ data: null }),
+    prevId
+      ? supabase
+          .from("coloring_page_translations")
+          .select("slug, title")
+          .eq("coloring_page_id", prevId)
+          .eq("language", lang)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const nextPage: NavPage | null = nextTransRes.data as NavPage | null;
+  const prevPage: NavPage | null = prevTransRes.data as NavPage | null;
 
   // Merge: same-topic pages first, fill to 12 with category pages (dedupe by slug)
   type RelatedPage = {
@@ -172,17 +231,14 @@ export default async function PageDetail({
   type SimilarTopic = { topic_id: string; topic_slug: string | null; name: string | null; category_slug: string | null };
   const similarTopics = ((similarTopicsRes.data ?? []) as SimilarTopic[]).filter(t => !!t.topic_slug);
 
-  const DIFFICULTY_BADGE: Record<string, string> = {
-    easy:   "bg-green-100 text-green-800",
-    medium: "bg-amber-100 text-amber-800",
-    hard:   "bg-blue-100 text-blue-800",
-  };
+  const randomPages = (randomPagesRes.data ?? []) as RelatedPage[];
+
   const difficultyBadge = cp.difficulty
     ? (DIFFICULTY_BADGE[cp.difficulty.toLowerCase()] ?? "bg-gray-100 text-gray-700")
     : "bg-gray-100 text-gray-700";
 
   const tags: string[] = typeof cp.keyword === "string"
-    ? cp.keyword.split(",").map(t => t.trim()).filter(Boolean)
+    ? cp.keyword.split(",").map(tag => tag.trim()).filter(Boolean)
     : [];
 
   const downloads = cp.views?.toLocaleString() ?? "0";
@@ -205,6 +261,17 @@ export default async function PageDetail({
             <li className="text-gray-700 font-semibold truncate max-w-[160px] sm:max-w-[200px]">{translation.title}</li>
           </ol>
         </nav>
+
+        {/* Topic browse link */}
+        <Link
+          href={`/${lang}/${categorySlug}/${topicSlug}`}
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-blue-500 hover:text-blue-700 mb-4 transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Browse all {titleCase(topicSlug)} coloring pages
+        </Link>
 
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-tight mb-5">
           {translation.title}
@@ -313,6 +380,34 @@ export default async function PageDetail({
           </aside>
         </div>
 
+        {/* ── Prev / Next navigation ──────────────────────────────── */}
+        {(prevPage || nextPage) && (
+          <div className="flex items-center justify-between gap-4 mt-6 pt-5 border-t border-gray-100">
+            {prevPage ? (
+              <Link
+                href={`/${lang}/${categorySlug}/${topicSlug}/${prevPage.slug}`}
+                className="group flex items-center gap-2 text-[13px] font-semibold text-gray-500 hover:text-blue-600 transition-colors max-w-[45%]"
+              >
+                <svg className="shrink-0 group-hover:-translate-x-[2px] transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+                <span className="line-clamp-1">{prevPage.title}</span>
+              </Link>
+            ) : <span />}
+            {nextPage && (
+              <Link
+                href={`/${lang}/${categorySlug}/${topicSlug}/${nextPage.slug}`}
+                className="group flex items-center gap-2 text-[13px] font-semibold text-gray-500 hover:text-blue-600 transition-colors ml-auto max-w-[45%]"
+              >
+                <span className="line-clamp-1 text-right">{nextPage.title}</span>
+                <svg className="shrink-0 group-hover:translate-x-[2px] transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </Link>
+            )}
+          </div>
+        )}
+
         {/* Ad in-content */}
         <AdLeaderboard className="my-8 sm:my-10" />
 
@@ -333,7 +428,7 @@ export default async function PageDetail({
               <div>
                 <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">You might also like</p>
                 <h2 className="text-[20px] sm:text-[22px] font-extrabold text-gray-900 tracking-tight">
-                  Related Coloring Pages
+                  More {titleCase(topicSlug)} coloring pages
                 </h2>
               </div>
               <Link href={`/${lang}/${categorySlug}/${topicSlug}`} className="text-[13.5px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
@@ -376,7 +471,7 @@ export default async function PageDetail({
               <div>
                 <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">More to explore</p>
                 <h2 className="text-[20px] sm:text-[22px] font-extrabold text-gray-900 tracking-tight">
-                  Explore similar topics
+                  More {titleCase(categorySlug)} coloring topics
                 </h2>
               </div>
               <Link href={`/${lang}/${categorySlug}`} className="text-[13.5px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
@@ -404,6 +499,49 @@ export default async function PageDetail({
           </section>
         )}
 
+        {/* ── SECTION 3: Explore more (other categories) ──────────────── */}
+        {randomPages.length > 0 && (
+          <section className="mt-12 sm:mt-14">
+            <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+              <div>
+                <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">Explore more</p>
+                <h2 className="text-[20px] sm:text-[22px] font-extrabold text-gray-900 tracking-tight">
+                  More free printable coloring pages
+                </h2>
+              </div>
+              <Link href={`/${lang}/browse`} className="text-[13.5px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
+                Browse all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+              {randomPages.map((page) => {
+                const badge = page.difficulty ? (DIFFICULTY_BADGE[page.difficulty.toLowerCase()] ?? null) : null;
+                const thumb = page.image_thumb_url ?? page.image_url;
+                return (
+                  <Link
+                    key={page.page_slug}
+                    href={`/${lang}/${page.category_slug}/${page.topic_slug}/${page.page_slug}`}
+                    className="group flex flex-col rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-blue-200 hover:shadow-[0_4px_20px_rgba(17,24,39,.09)] hover:-translate-y-0.5 transition-all"
+                  >
+                    <div className="aspect-square bg-[#FAFAFA] border-b border-gray-200 flex items-center justify-center relative overflow-hidden">
+                      {thumb
+                        ? <img src={thumb} alt={`${page.title} coloring page`} className="w-[78%] h-[78%] object-contain group-hover:scale-[1.04] transition-transform" loading="lazy" />
+                        : <span className="text-4xl text-gray-200">🎨</span>
+                      }
+                      {badge && page.difficulty && (
+                        <span className={`absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md ${badge}`}>
+                          {page.difficulty.charAt(0).toUpperCase() + page.difficulty.slice(1)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-3 py-2.5"><p className="text-[13px] font-bold text-gray-700 line-clamp-2 leading-snug">{page.title}</p></div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* ── JSON-LD ─────────────────────────────────────────── */}
         <script
           type="application/ld+json"
@@ -413,24 +551,24 @@ export default async function PageDetail({
               "@graph": [
                 {
                   "@type": "ImageObject",
-                  "@id": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}#image`,
+                  "@id": `${BASE_URL}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}#image`,
                   "url": cp.image_url ?? "",
                   "contentUrl": cp.image_url ?? "",
                   "name": translation.title,
                   "description": `Free printable ${translation.title.toLowerCase()} coloring page. Download as PDF instantly.`,
                   "encodingFormat": "image/webp",
                   "license": "https://creativecommons.org/licenses/by/4.0/",
-                  "acquireLicensePage": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/terms`,
+                  "acquireLicensePage": `${BASE_URL}/${lang}/terms`,
                   "creditText": "colorversum",
-                  "creator": { "@type": "Organization", "name": "colorversum", "url": process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com" },
-                  "isPartOf": { "@type": "WebPage", "url": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}` },
+                  "creator": { "@type": "Organization", "name": "colorversum", "url": BASE_URL },
+                  "isPartOf": { "@type": "WebPage", "url": `${BASE_URL}/${lang}/${categorySlug}/${topicSlug}/${pageSlug}` },
                 },
                 {
                   "@type": "BreadcrumbList",
                   "itemListElement": [
-                    { "@type": "ListItem", "position": 1, "name": "Home", "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}` },
-                    { "@type": "ListItem", "position": 2, "name": categorySlug.replace(/-/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()), "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}` },
-                    { "@type": "ListItem", "position": 3, "name": topicSlug.replace(/-/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()), "item": `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"}/${lang}/${categorySlug}/${topicSlug}` },
+                    { "@type": "ListItem", "position": 1, "name": "Home", "item": `${BASE_URL}/${lang}` },
+                    { "@type": "ListItem", "position": 2, "name": categorySlug.replace(/-/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()), "item": `${BASE_URL}/${lang}/${categorySlug}` },
+                    { "@type": "ListItem", "position": 3, "name": topicSlug.replace(/-/g, " ").replace(/\b\w/g, (ch: string) => ch.toUpperCase()), "item": `${BASE_URL}/${lang}/${categorySlug}/${topicSlug}` },
                     { "@type": "ListItem", "position": 4, "name": translation.title },
                   ],
                 },

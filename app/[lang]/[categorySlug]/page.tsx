@@ -122,7 +122,7 @@ export default async function CategoryPage({
           .eq("coloring_pages.is_published", true)
           .eq("coloring_pages.is_ready", true)
           .order("coloring_pages(views)", { ascending: false })
-          .limit(6)
+          .limit(8)
       : Promise.resolve({ data: [] }),
 
     validTopicIds.length
@@ -134,7 +134,7 @@ export default async function CategoryPage({
           .eq("coloring_pages.is_published", true)
           .eq("coloring_pages.is_ready", true)
           .order("coloring_pages(created_at)", { ascending: false })
-          .limit(6)
+          .limit(12)
       : Promise.resolve({ data: [] }),
 
     validTopicIds.length
@@ -371,7 +371,21 @@ export default async function CategoryPage({
                 {(topics ?? []).length} topics — all available as instant PDF downloads, ready to print at home.
                 Whether you&apos;re looking for easy designs for young kids or detailed scenes for adults, new pages are added regularly.
               </p>
-              <p>Every <strong>printable {category.name.toLowerCase()} coloring sheet</strong> is completely free — no account required, no watermarks.</p>
+              <p>Every <strong>printable {category.name.toLowerCase()} coloring sheet</strong> is completely free — no account required, no watermarks. New pages are added every week across all topics.</p>
+              {topics && topics.length > 0 && (
+                <p className="mt-3">
+                  {"Popular topics include "}
+                  {topics.slice(0, Math.min(5, topics.length)).map((tp, i) => (
+                    <span key={tp.topic_id}>
+                      <Link href={`/${lang}/${categorySlug}/${tp.slug}`} className="text-blue-500 hover:underline font-semibold">
+                        {tp.name} coloring pages
+                      </Link>
+                      {i < Math.min(4, topics.length - 1) ? ", " : ""}
+                    </span>
+                  ))}
+                  {"."}
+                </p>
+              )}
             </div>
             {topics && topics.length > 0 && (
               <div className="mt-6 pt-6 border-t border-gray-100">

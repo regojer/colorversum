@@ -173,16 +173,17 @@ export default async function TopicPage({
   const relatedTopics = ((relatedTopicsRaw ?? []) as Array<{ topic_id: string; slug: string | null; name: string | null }>)
     .filter(t => t.slug && t.slug.trim() !== "") as Array<{ topic_id: string; slug: string; name: string | null }>;
 
-  // Cross-topic pages: top 4 from first related topic
-  const firstRelatedTopicId = relatedTopics[0]?.topic_id ?? null;
-  const { data: crossTopicPagesRaw } = firstRelatedTopicId
+  // Explore more: pages from same category, different topics
+  const { data: explorePagesRaw } = categoryId
     ? await supabase
         .from("landing_page_cards")
         .select("page_slug, title, image_thumb_url, image_url, difficulty, topic_slug, category_slug")
         .eq("language", lang)
-        .eq("topic_id", firstRelatedTopicId)
+        .eq("category_slug", categorySlug)
+        .neq("topic_id", topic.topic_id)
         .order("views", { ascending: false })
-        .limit(4)
+        .range(0, 11)
+        .limit(12)
     : { data: [] };
 
   type CrossPage = {
@@ -190,7 +191,7 @@ export default async function TopicPage({
     image_thumb_url: string | null; image_url: string | null;
     difficulty: string | null; topic_slug: string; category_slug: string;
   };
-  const crossTopicPages = (crossTopicPagesRaw ?? []) as CrossPage[];
+  const explorePages = (explorePagesRaw ?? []) as CrossPage[];
   const firstRelatedTopic = relatedTopics[0] ?? null;
 
   return (
@@ -289,6 +290,21 @@ export default async function TopicPage({
               <p>
                 Whether you need <strong>easy {displayName.toLowerCase()} coloring pages</strong> for young kids or more detailed designs for adults, you&apos;ll find a variety of styles and difficulty levels above. New <strong>printable {displayName.toLowerCase()} coloring sheets</strong> are added regularly.
               </p>
+              {relatedTopics.length > 0 && (
+                <p>
+                  {"If you enjoy "}<Link href={`/${lang}/${categorySlug}/${topicSlug}`} className="text-blue-500 hover:underline font-semibold">{displayName} coloring pages</Link>
+                  {", you might also like "}
+                  {relatedTopics.slice(0, 3).map((rt, i) => (
+                    <span key={rt.slug}>
+                      <Link href={`/${lang}/${categorySlug}/${rt.slug}`} className="text-blue-500 hover:underline font-semibold">
+                        {rt.name ?? titleCase(rt.slug)} coloring pages
+                      </Link>
+                      {i < Math.min(2, relatedTopics.length - 1) ? ", " : ""}
+                    </span>
+                  ))}
+                  {"."}
+                </p>
+              )}
             </div>
             {relatedTopics.length > 0 && (
               <div className="pt-6 border-t border-gray-100">
@@ -347,21 +363,21 @@ export default async function TopicPage({
         )}
 
         {/* ── CROSS-TOPIC SECTION ───────────────────────────────────── */}
-        {crossTopicPages.length > 0 && firstRelatedTopic && (
+        {explorePages.length > 0 && (
           <section className="mt-12 sm:mt-14">
             <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
               <div>
-                <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">{t.alsoPopular}</p>
+                <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">{t.keepExploring}</p>
                 <h2 className="text-[clamp(18px,2.5vw,24px)] font-black text-gray-900 tracking-tight">
-                  {firstRelatedTopic.name ?? titleCase(firstRelatedTopic.slug)} {t.coloringPages.toLowerCase()}
+                  Explore {category?.name} coloring pages
                 </h2>
               </div>
-              <Link href={`/${lang}/${categorySlug}/${firstRelatedTopic.slug}`} className="text-[13px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
+              <Link href={`/${lang}/${categorySlug}`} className="text-[13px] font-bold text-blue-500 hover:text-blue-700 whitespace-nowrap">
                 {t.seeAll}
               </Link>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-              {crossTopicPages.map((page, i) => {
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+              {explorePages.map((page, i) => {
                 const badge = page.difficulty ? (DIFFICULTY_BADGE[page.difficulty.toLowerCase()] ?? null) : null;
                 const thumb = page.image_thumb_url ?? page.image_url;
                 return (
