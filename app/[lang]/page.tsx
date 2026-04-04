@@ -117,10 +117,10 @@ export async function generateMetadata({
   return {
     title: "Free Printable Coloring Pages for Kids & Adults | colorversum",
     description:
-      "Download 60,000+ free printable coloring pages for kids and adults. Animals, dinosaurs, fantasy, holidays and more. PDF coloring sheets ready to print in seconds — no sign-up required.",
+      "Download 1,000+ free printable coloring pages for kids and adults. Animals, dinosaurs, fantasy, holidays and more. PDF coloring sheets ready to print in seconds — no sign-up required.",
     openGraph: {
       title: "Free Coloring Pages for Kids & Adults | colorversum",
-      description: "60,000+ free printable coloring sheets. Print instantly.",
+      description: "1,000+ free printable coloring sheets. Print instantly.",
       type: "website",
       url: `${BASE_URL}/${lang}`,
     },
@@ -338,8 +338,8 @@ export default async function HomePage({
       <div className="border-b border-gray-200 bg-white">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-8 grid grid-cols-2 md:grid-cols-4">
           {([
-            { stat: "1M+",   label: t.trustDownloaded },
-            { stat: "10,000+", label: t.trustFreePages },
+            { stat: "1,000+",   label: t.trustDownloaded },
+            { stat: "1,000+", label: t.trustFreePages },
             { stat: "Free",    label: t.trustNoCreditCard },
             { stat: "100+",     label: t.trustAddedWeekly },
           ] as { stat: string; label: string }[]).map((item, i) => (
