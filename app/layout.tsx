@@ -68,16 +68,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','GTM-T6T72XQB');`,
           }}
         />
+        <meta name="google-site-verification" content="5YFuBNzldzucnp8Z6ZIglMA2cVAnBpAlfIondWXwViE" />
+        <meta name="google-adsense-account" content="ca-pub-9395639617196023" />
       </head>
-      <meta name="google-site-verification" content="5YFuBNzldzucnp8Z6ZIglMA2cVAnBpAlfIondWXwViE" />
-      <meta name="google-adsense-account" content="ca-pub-9395639617196023"></meta>
       <body
         className={`${jakarta.variable} font-sans overflow-x-hidden antialiased`}
       >
         {/* GTM noscript fallback */}
         <noscript>
           <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
+            src="https://www.googletagmanager.com/ns.html?id=GTM-T6T72XQB"
             height="0"
             width="0"
             style={{ display: "none", visibility: "hidden" }}
