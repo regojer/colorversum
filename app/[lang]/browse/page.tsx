@@ -52,7 +52,7 @@ export default async function BrowsePage({
 
   query = sp.sort === "popular"
     ? query.order("views", { ascending: false })
-    : query.order("created_at", { ascending: false });
+    : query.order("coloring_page_id", { ascending: false });
 
   // ── Categories in current language ───────────────────────────
   const [pagesRes, catRes, countRes] = await Promise.all([
