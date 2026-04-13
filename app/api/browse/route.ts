@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     q = sort === "popular"
       ? q.order("views", { ascending: false })
-      : q.order("coloring_page_id", { ascending: false });
+      : q.order("created_at", { ascending: false });
 
     const { data, count, error } = await q;
 
