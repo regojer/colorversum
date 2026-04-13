@@ -192,12 +192,11 @@ export default async function HomePage({
       .from("category_preview_images")
       .select("category_id, image_thumb_url, image_url"),
 
-    // Topic preview images
+    // Topic preview images — language-aware so only topics with translated pages appear
     supabase
-      .from("coloring_pages")
+      .from("landing_page_cards")
       .select("image_thumb_url, image_url, topic_id")
-      .eq("is_ready", true)
-      .eq("is_published", true)
+      .eq("language", lang)
       .not("topic_id", "is", null)
       .order("views", { ascending: false })
       .limit(400),

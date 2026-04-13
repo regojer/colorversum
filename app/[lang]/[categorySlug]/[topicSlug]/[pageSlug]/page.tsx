@@ -155,7 +155,7 @@ export default async function PageDetail({
       .order("views", { ascending: false })
       .limit(8),
 
-    // 3. Similar topics — same category, different topic, for topic nav section
+    // 3. Similar topics — same category, different topic; fetch more to allow validation
     cp.topic_id
       ? supabase
           .from("topic_cards")
@@ -163,7 +163,8 @@ export default async function PageDetail({
           .eq("language", lang)
           .eq("category_slug", categorySlug)
           .neq("topic_id", cp.topic_id)
-          .limit(6)
+          .not("topic_slug", "is", null)
+          .limit(20)
       : Promise.resolve({ data: [] }),
 
     // 4. Next page in topic (by created_at)
@@ -242,7 +243,22 @@ export default async function PageDetail({
   const relatedPages  = [...topicPages, ...fillPages].slice(0, 12);
 
   type SimilarTopic = { topic_id: string; topic_slug: string | null; name: string | null; category_slug: string | null };
-  const similarTopics = ((similarTopicsRes.data ?? []) as SimilarTopic[]).filter(t => !!t.topic_slug);
+  const candidateTopics = ((similarTopicsRes.data ?? []) as SimilarTopic[])
+    .filter(t => !!t.topic_slug && t.topic_slug !== "null");
+
+  // Validate: only show topics that have actual pages in this language (prevents 404s)
+  const candidateIds = candidateTopics.map(t => t.topic_id);
+  const { data: validTopicRows } = candidateIds.length
+    ? await supabase
+        .from("landing_page_cards")
+        .select("topic_id")
+        .eq("language", lang)
+        .in("topic_id", candidateIds)
+    : { data: [] };
+  const validTopicIdSet = new Set((validTopicRows ?? []).map((r: { topic_id: string }) => r.topic_id));
+  const similarTopics = candidateTopics
+    .filter(t => validTopicIdSet.has(t.topic_id))
+    .slice(0, 6) as Array<{ topic_id: string; topic_slug: string; name: string | null; category_slug: string | null }>;
 
   const randomPages = (randomPagesRes.data ?? []) as RelatedPage[];
 
