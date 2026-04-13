@@ -15,9 +15,9 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: {
     default: "Free Printable Coloring Pages | colorversum",
-    template: "%s | colorversum",
+    template: "%s",
   },
-  description: "60,000+ free printable coloring pages for kids and adults.",
+  description: "1,000+ free printable coloring pages for kids and adults.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com"
   ),

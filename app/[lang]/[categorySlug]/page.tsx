@@ -107,7 +107,7 @@ export default async function CategoryPage({
         .not("slug", "is", null)
     : { data: [] };
 
-  const topics = (topicsRaw ?? []).filter(t => !!t.slug && t.slug.trim() !== "");
+  const topics = (topicsRaw ?? []).filter(t => !!t.slug && t.slug.trim() !== "" && t.slug !== "null");
 
   if (!topics || topics.length === 0) notFound();
 
@@ -237,7 +237,7 @@ export default async function CategoryPage({
               </h1>
               {category.description && <p className="text-[15px] text-gray-500 max-w-[560px] leading-relaxed">{category.description}</p>}
             </div>
-            <span className="text-[13px] font-semibold text-gray-400 self-end whitespace-nowrap">{(topics ?? []).length} {t.topicsLabel}</span>
+            <span className="text-[13px] font-semibold text-gray-400 self-end whitespace-nowrap">{(topics ?? []).length} {(topics ?? []).length === 1 ? "topic" : t.topicsLabel}</span>
           </div>
         </div>
       </div>
@@ -253,7 +253,7 @@ export default async function CategoryPage({
               <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-blue-500 mb-1.5">{t.browseByTopic}</p>
               <h2 className="text-[clamp(20px,2.8vw,30px)] font-black text-gray-900 tracking-tight">{t.chooseTopic}</h2>
             </div>
-            <span className="text-[13px] font-semibold text-gray-400">{(topics ?? []).length} {t.topicsLabel}</span>
+            <span className="text-[13px] font-semibold text-gray-400">{(topics ?? []).length} {(topics ?? []).length === 1 ? "topic" : t.topicsLabel}</span>
           </div>
 
           {!topics || topics.length === 0 ? (

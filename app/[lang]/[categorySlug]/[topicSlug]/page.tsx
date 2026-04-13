@@ -38,7 +38,8 @@ export async function generateMetadata({
     .eq("language", lang)
     .single();
 
-  const displayName = topic?.name ?? titleCase(topicSlug);
+  const rawDisplayName = topic?.name ?? titleCase(topicSlug);
+  const displayName = rawDisplayName.replace(/\s*coloring pages?\s*$/i, "").trim();
   const title       = topic?.seo_title ?? `${displayName} Coloring Pages — Free Printable | colorversum`;
   const description = topic?.seo_description ?? `Download free printable ${displayName.toLowerCase()} coloring pages. High-quality PDF coloring sheets for kids and adults — no sign-up required.`;
 
@@ -75,6 +76,9 @@ export default async function TopicPage({
   params: Promise<{ lang: string; categorySlug: string; topicSlug: string }>;
 }) {
   const { lang, categorySlug, topicSlug } = await params;
+
+  if (!topicSlug || topicSlug === "null") notFound();
+
   const t = getUI(lang);
 
   // ── 1. Topic from translation table ───────────────────────────
@@ -87,7 +91,8 @@ export default async function TopicPage({
 
   if (!topic) notFound();
 
-  const displayName = titleCase(topic.name ?? topicSlug);
+  const rawName = titleCase(topic.name ?? topicSlug);
+  const displayName = rawName.replace(/\s*coloring pages?\s*$/i, "").trim();
 
   // ── 2. Get category_id from base topics table ─────────────────
   const { data: baseTopic } = await supabase

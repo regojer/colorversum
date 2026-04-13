@@ -16,9 +16,9 @@ export async function generateMetadata({
   const { lang } = await params;
   const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com";
   return {
-    title: "Browse Free Coloring Pages — Search 60,000+ Printables | colorversum",
+    title: "Browse Free Coloring Pages — Search 1,000+ Printables | colorversum",
     description:
-      "Search and filter 60,000+ free printable coloring pages by category, difficulty, and style. Instant PDF download, no sign-up required.",
+      "Search and filter 1,000+ free printable coloring pages by category, difficulty, and style. Instant PDF download, no sign-up required.",
     alternates: {
       canonical: `${BASE_URL}/${lang}/browse`,
     },

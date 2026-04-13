@@ -13,6 +13,16 @@ import { pageHreflang, fetchCategorySlugsByLang, fetchTopicSlugsByLang, fetchPag
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com";
 
+// Strips verbose AI prefixes and enforces a max length for SEO titles
+function cleanSeoTitle(title: string): string {
+  const cleaned = title
+    .replace(/^(discover the magic of our|explore our|introducing the|enjoy our|check out our|welcome to|presenting the)\s+/i, "")
+    .replace(/\s*-\s*free\s*printable(\s*pdf)?$/i, "")
+    .replace(/\s*coloring\s*page\s*for\s*kids\s*$/i, "")
+    .trim();
+  return cleaned.length > 55 ? cleaned.substring(0, 52).trim() + "…" : cleaned;
+}
+
 function titleCase(s: string) {
   return s.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -43,7 +53,7 @@ export async function generateMetadata({
     .eq("id", data.coloring_page_id)
     .single();
 
-  const title       = `${data.title} — Free Printable PDF | colorversum`;
+  const title       = `${cleanSeoTitle(data.title)} — Free Printable | colorversum`;
   const description = (data.description as string | null) ?? `Free printable ${data.title.toLowerCase()} coloring page. Download PDF instantly — no sign-up required.`;
   const imageUrl    = basePage?.image_url ?? null;
 
@@ -87,6 +97,9 @@ export default async function PageDetail({
   params: Promise<{ lang: string; categorySlug: string; topicSlug: string; pageSlug: string }>;
 }) {
   const { lang, categorySlug, topicSlug, pageSlug } = await params;
+
+  if (!topicSlug || topicSlug === "null") notFound();
+
   const t = getUI(lang);
 
   // ── Step 1: Get translation (no join — avoid fragile !inner) ──────
@@ -237,11 +250,13 @@ export default async function PageDetail({
     ? (DIFFICULTY_BADGE[cp.difficulty.toLowerCase()] ?? "bg-gray-100 text-gray-700")
     : "bg-gray-100 text-gray-700";
 
-  const tags: string[] = typeof cp.keyword === "string"
-    ? cp.keyword.split(",").map(tag => tag.trim()).filter(Boolean)
-    : [];
-
-  const downloads = cp.views?.toLocaleString() ?? "0";
+  const rawKeyword = typeof cp.keyword === "string" ? cp.keyword : "";
+  const tags: string[] = rawKeyword
+    .replace(/\b(easy|medium|hard|simple|cartoon|realistic|coloring page|printable)\b/gi, "")
+    .split(/[\s,]+/)
+    .map(tag => tag.trim().toLowerCase())
+    .filter(tag => tag.length > 2 && tag.length < 20)
+    .slice(0, 6);
 
   return (
     <>
@@ -308,10 +323,12 @@ export default async function PageDetail({
 
             <div className="bg-white border border-gray-200 rounded-[18px] p-5 shadow-sm flex flex-col gap-3">
               <div className="flex gap-3.5 flex-wrap text-[13px] font-semibold text-gray-500">
-                <span className="flex items-center gap-1.5">
-                  <svg className="shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  {downloads} {t.downloads}
-                </span>
+                {cp.views && cp.views > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    {cp.views.toLocaleString()} {t.downloads}
+                  </span>
+                )}
                 <span className="flex items-center gap-1.5">
                   <svg className="shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                   Free forever
