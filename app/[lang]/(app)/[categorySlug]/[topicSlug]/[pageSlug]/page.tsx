@@ -244,18 +244,18 @@ export default async function PageDetail({
     .slice(0, 6);
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 sm:px-8 pt-6 pb-20">
+    <div className="px-4 sm:px-6 xl:px-8 pt-5 pb-20">
 
       {/* Breadcrumb */}
-      <nav className="mb-5">
-        <ol className="flex flex-wrap items-center gap-1 list-none text-[12.5px] font-semibold text-gray-400">
+      <nav className="mb-4">
+        <ol className="flex flex-wrap items-center gap-1 list-none text-[12px] font-semibold text-gray-400">
           <li><Link href={`/${lang}`} className="hover:text-violet-500 transition-colors">Home</Link></li>
           <li className="text-gray-300">›</li>
           <li><Link href={`/${lang}/${categorySlug}`} className="hover:text-violet-500 transition-colors capitalize">{titleCase(categorySlug)}</Link></li>
           <li className="text-gray-300">›</li>
           <li><Link href={`/${lang}/${categorySlug}/${topicSlug}`} className="hover:text-violet-500 transition-colors capitalize">{titleCase(topicSlug)}</Link></li>
           <li className="text-gray-300">›</li>
-          <li className="text-gray-700 font-semibold truncate max-w-[160px] sm:max-w-[200px]">{translation.title}</li>
+          <li className="text-gray-700 font-semibold truncate max-w-[160px] sm:max-w-[240px]">{translation.title}</li>
         </ol>
       </nav>
 
@@ -270,12 +270,12 @@ export default async function PageDetail({
         Browse all {titleCase(topicSlug)} coloring pages
       </Link>
 
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-tight mb-5">
+      <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight mb-5">
         {translation.title}
       </h1>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 sm:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_300px] gap-5 sm:gap-7 items-start">
 
         {/* Image */}
         <div className="flex flex-col gap-2.5">
@@ -412,7 +412,7 @@ export default async function PageDetail({
 
       {/* Related Coloring Pages */}
       {relatedPages.length > 0 && (
-        <section className="mt-12 sm:mt-14">
+        <section className="mt-10">
           <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
             <div>
               <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-violet-500 mb-1.5">You might also like</p>
@@ -432,7 +432,7 @@ export default async function PageDetail({
                 <Link
                   key={page.page_slug}
                   href={`/${lang}/${page.category_slug}/${page.topic_slug}/${page.page_slug}`}
-                  className="group flex flex-col rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-violet-200 hover:shadow-[0_4px_20px_rgba(109,40,217,.09)] hover:-translate-y-0.5 transition-all"
+                  className="group flex flex-col rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-violet-200 hover:shadow-[0_4px_20px_rgba(109,40,217,.08)] hover:-translate-y-0.5 transition-all"
                 >
                   <div className="aspect-square bg-[#FAFAFA] border-b border-gray-200 flex items-center justify-center relative overflow-hidden">
                     {thumb
@@ -455,7 +455,7 @@ export default async function PageDetail({
 
       {/* Similar topics */}
       {similarTopics.length > 0 && (
-        <section className="mt-12 sm:mt-14">
+        <section className="mt-10">
           <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
             <div>
               <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-violet-500 mb-1.5">More to explore</p>
@@ -490,7 +490,7 @@ export default async function PageDetail({
 
       {/* Explore more (other categories) */}
       {randomPages.length > 0 && (
-        <section className="mt-12 sm:mt-14">
+        <section className="mt-10">
           <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
             <div>
               <p className="text-[11.5px] font-bold uppercase tracking-[.1em] text-violet-500 mb-1.5">Explore more</p>
@@ -510,7 +510,7 @@ export default async function PageDetail({
                 <Link
                   key={page.page_slug}
                   href={`/${lang}/${page.category_slug}/${page.topic_slug}/${page.page_slug}`}
-                  className="group flex flex-col rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-violet-200 hover:shadow-[0_4px_20px_rgba(109,40,217,.09)] hover:-translate-y-0.5 transition-all"
+                  className="group flex flex-col rounded-2xl border border-gray-200 bg-white overflow-hidden hover:border-violet-200 hover:shadow-[0_4px_20px_rgba(109,40,217,.08)] hover:-translate-y-0.5 transition-all"
                 >
                   <div className="aspect-square bg-[#FAFAFA] border-b border-gray-200 flex items-center justify-center relative overflow-hidden">
                     {thumb

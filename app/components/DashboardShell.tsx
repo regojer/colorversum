@@ -3,16 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-// ── Emoji map ───────────────────────────────────────────────────────────────
-const CAT_EMOJI: Record<string, string> = {
-  "animal-coloring-pages": "🦁", "fairy-tales": "🐉", "space-science": "🚀",
-  "holiday-coloring": "🎄", "nature-coloring": "🌿", "food-drinks": "🍕",
-  "fantasy-coloring": "🐉", "seasonal-coloring": "🍂", "characters": "🎭",
-  "emotions-mindfulness": "💛", "education": "📚", "jobs-professions": "👷",
-  "pattern-coloring": "🔷", "vehicles": "🚗", "sports": "⚽",
-};
-const ce = (slug: string) => CAT_EMOJI[slug] ?? "🎨";
+import { categoryEmoji as ce } from "@/lib/emoji";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 type Category = { category_id: string; name: string; slug: string };

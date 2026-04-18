@@ -3,17 +3,9 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import CardGrid from "@/app/components/CardGrid";
 import { landingHreflang } from "@/lib/hreflang";
+import { categoryEmoji as ce } from "@/lib/emoji";
 
 export const revalidate = 3600;
-
-const CAT_EMOJI: Record<string, string> = {
-  "animal-coloring-pages": "🦁", "fairy-tales": "🐉", "space-science": "🚀",
-  "holiday-coloring": "🎄", "nature-coloring": "🌿", "food-drinks": "🍕",
-  "fantasy-coloring": "🐉", "seasonal-coloring": "🍂", "characters": "🎭",
-  "emotions-mindfulness": "💛", "education": "📚", "jobs-professions": "👷",
-  "pattern-coloring": "🔷", "vehicles": "🚗", "sports": "⚽",
-};
-const ce = (s: string) => CAT_EMOJI[s] ?? "🎨";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://colorversum.com";
 
@@ -106,11 +98,11 @@ export default async function HomePage({
       {!hasFilters && (
         <div className="px-4 sm:px-6 xl:px-8 pt-5 pb-3 space-y-3">
 
-          {/* Row 1: Hero + Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Row 1: Hero */}
+          <div>
 
             {/* Hero bento */}
-            <div className="md:col-span-2 rounded-2xl overflow-hidden relative min-h-[190px]"
+            <div className="rounded-2xl overflow-hidden relative min-h-[190px]"
                  style={{ background: "linear-gradient(135deg, #1e1154 0%, #4C1D95 45%, #7C3AED 80%, #c084fc 100%)" }}>
               <div className="absolute -top-12 -right-12 w-56 h-56 rounded-full bg-white/[0.04] pointer-events-none" />
               <div className="absolute bottom-4 left-1/2 w-32 h-32 rounded-full bg-white/[0.04] pointer-events-none" />
@@ -154,50 +146,6 @@ export default async function HomePage({
               </div>
             </div>
 
-            {/* Stats bento */}
-            <div className="rounded-2xl bg-white border border-gray-200 p-4 grid grid-cols-2 gap-2.5">
-              {([
-                { Icon: () => (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                      <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
-                    </svg>
-                  ),
-                  stat: totalCount >= 1000 ? "1,000+" : `${totalCount}`, label: "Free pages", accent: "text-violet-500 bg-violet-50" },
-                { Icon: () => (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
-                    </svg>
-                  ),
-                  stat: "Free", label: "Always & forever", accent: "text-emerald-500 bg-emerald-50" },
-                { Icon: () => (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                      <polyline points="6 9 6 2 18 2 18 9"/>
-                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                      <rect x="6" y="14" width="12" height="8"/>
-                    </svg>
-                  ),
-                  stat: "PDF", label: "Print-ready", accent: "text-blue-500 bg-blue-50" },
-                { Icon: () => (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="2" y1="12" x2="22" y2="12"/>
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                  ),
-                  stat: "7", label: "Languages", accent: "text-amber-500 bg-amber-50" },
-              ] as { Icon: () => React.JSX.Element; stat: string; label: string; accent: string }[]).map(item => (
-                <div key={item.label} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.accent}`}>
-                    <item.Icon />
-                  </div>
-                  <div>
-                    <div className="text-[17px] font-black text-gray-900 leading-none">{item.stat}</div>
-                    <div className="text-[11px] font-semibold text-gray-400 mt-0.5 leading-tight">{item.label}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Row 2: Trending strip */}
