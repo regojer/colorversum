@@ -10,6 +10,7 @@ export async function POST(req: Request) {
       lang       = "en",
       page       = 1,
       categories = [],
+      topic      = "",
       difficulty = [],
       query      = "",
       sort       = "",
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
 
     if (query)            q = q.ilike("title", `%${query}%`);
     if (categories?.length) q = q.in("category_slug", categories);
+    if (topic)            q = q.eq("topic_slug", topic);
     if (difficulty?.length) q = q.in("difficulty", difficulty);
     if (featured)         q = (q as any).eq("is_featured", true);
 

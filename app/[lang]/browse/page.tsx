@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
-import BrowseClient from "@/app/components/BrowseClient";
+import BrowseSidebar from "@/app/components/BrowseSidebar";
 
 export const revalidate = 0; // always fresh — browse is interactive
 
@@ -82,18 +82,17 @@ export default async function BrowsePage({
   return (
     <>
       <Header lang={lang} />
-      <main className="pb-20" style={{ paddingTop: 64 }}>
-        <BrowseClient
-          lang={lang}
-          initialPages={initialPages}
-          categories={categories}
-          totalCount={totalCount}
-          initialQuery={sp.q ?? ""}
-          initialCategory={sp.category ?? ""}
-          initialDifficulty={sp.difficulty ?? ""}
-          initialSort={sp.sort ?? ""}
-        />
-      </main>
+      <BrowseSidebar
+        lang={lang}
+        initialPages={initialPages}
+        categories={categories}
+        totalCount={totalCount}
+        topOffset={64}
+        initialQuery={sp.q ?? ""}
+        initialCategory={sp.category ?? ""}
+        initialDifficulty={sp.difficulty ?? ""}
+        initialSort={sp.sort ?? ""}
+      />
       <Footer lang={lang} />
     </>
   );

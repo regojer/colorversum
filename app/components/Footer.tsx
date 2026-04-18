@@ -10,10 +10,10 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
   const t = getUI(lang);
 
   const BROWSE_LINKS = [
-    { label: t.footerAllPages, href: `/${lang}/browse` },
-    { label: t.footerNewPages, href: `/${lang}/browse?sort=new` },
-    { label: t.footerPopular,  href: `/${lang}/browse?sort=popular` },
-    { label: t.easy,           href: `/${lang}/browse?difficulty=easy` },
+    { label: t.footerAllPages, href: `/${lang}` },
+    { label: t.footerNewPages, href: `/${lang}?sort=new` },
+    { label: t.footerPopular,  href: `/${lang}?sort=popular` },
+    { label: t.easy,           href: `/${lang}?difficulty=easy` },
     { label: t.categories,     href: `/${lang}/categories` },
   ];
 
@@ -22,14 +22,12 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
     { label: t.footerTerms,   href: `/${lang}/terms` },
     { label: t.footerCookies, href: `/${lang}/cookies` },
     { label: t.footerImprint, href: `/${lang}/imprint` },
-    { label: t.footerContact, href: `/${lang}/contact` },
   ];
 
   const BOTTOM_LINKS = [
     { label: t.footerPrivacyShort, href: `/${lang}/privacy` },
     { label: t.footerTermsShort,   href: `/${lang}/terms` },
     { label: t.footerImprint,      href: `/${lang}/imprint` },
-    { label: t.footerContact,      href: `/${lang}/contact` },
   ];
 
   // ── Fetch dynamic link data in parallel ───────────────────────
@@ -45,17 +43,24 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
       .select("id, computed_topic_count")
       .gt("computed_topic_count", 0),
 
+    // Topics sourced from landing_page_cards — guarantees topic has real pages in this language
     supabase
-      .from("topic_cards")
-      .select("topic_id, topic_slug, name, category_slug")
+      .from("landing_page_cards")
+      .select("topic_id, topic_slug, category_slug")
       .eq("language", lang)
       .not("topic_slug", "is", null)
-      .limit(40),
+      .not("category_slug", "is", null)
+      .not("image_url", "is", null)
+      .order("views", { ascending: false })
+      .limit(200),
 
     supabase
       .from("landing_page_cards")
       .select("page_slug, title, topic_slug, category_slug")
       .eq("language", lang)
+      .not("topic_slug", "is", null)
+      .not("category_slug", "is", null)
+      .not("image_url", "is", null)
       .order("views", { ascending: false })
       .range(30, 49),
   ]);
@@ -72,14 +77,22 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
     .sort((a, b) => (countMap.get(b.category_id) ?? 0) - (countMap.get(a.category_id) ?? 0))
     .slice(0, 7);
 
+  // Dedupe landing_page_cards rows by topic_id — take first occurrence per topic
   type TopicRow = { topic_id: string; topic_slug: string; name: string | null; category_slug: string | null };
-  const topTopics = ((topicsRes.data ?? []) as TopicRow[]).slice(0, 9);
+  const seenTopicIds = new Set<string>();
+  const topTopics: TopicRow[] = [];
+  for (const row of (topicsRes.data ?? []) as TopicRow[]) {
+    if (!row.topic_id || seenTopicIds.has(row.topic_id)) continue;
+    seenTopicIds.add(row.topic_id);
+    topTopics.push(row);
+    if (topTopics.length >= 9) break;
+  }
 
   type TrendingRow = { page_slug: string; title: string; topic_slug: string | null; category_slug: string | null };
   const trendingPages = ((trendingRes.data ?? []) as TrendingRow[]).slice(0, 10);
 
   return (
-    <footer className="border-t border-gray-200 bg-white mt-20">
+    <footer className="border-t border-gray-200 bg-white mt-10">
 
       {/* ── Dynamic internal links section ────────────────────────── */}
       <div className="border-b border-gray-100">
@@ -124,7 +137,7 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
                     href={`/${lang}/${topic.category_slug}/${topic.topic_slug}`}
                     className="text-[13px] font-medium text-gray-500 hover:text-gray-900 py-0.5 block transition-colors leading-snug"
                   >
-                    {topic.name} coloring pages
+                    {topic.name ?? topic.topic_slug.replace(/-/g, " ")} coloring pages
                   </Link>
                 </li>
               ))}
@@ -149,7 +162,7 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
               ))}
               <li>
                 <Link
-                  href={`/${lang}/browse?sort=popular`}
+                  href={`/${lang}?sort=popular`}
                   className="text-[13px] font-medium text-gray-500 hover:text-gray-900 py-0.5 block transition-colors leading-snug"
                 >
                   See all trending →
@@ -162,14 +175,7 @@ export default async function Footer({ lang = "en" }: { lang?: string }) {
       </div>
 
       {/* ── Main grid ─────────────────────────────────────────────── */}
-      <div
-        className="max-w-[1100px] mx-auto px-4 sm:px-8 pt-[52px] pb-11"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.8fr 1fr 1fr",
-          gap: "40px",
-        }}
-      >
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-8 pt-10 pb-11 grid grid-cols-1 sm:grid-cols-3 gap-8">
         {/* Brand column */}
         <div className="flex flex-col gap-3">
           <Link
