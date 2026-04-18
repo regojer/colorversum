@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import PrintButton from "@/app/components/PrintButton";
 import DownloadButton from "@/app/components/DownloadButton";
+import BackButton from "@/app/components/BackButton";
 import { getUI } from "@/lib/i18n";
 import { DIFFICULTY_BADGE } from "@/lib/constants";
 import { pageHreflang, fetchCategorySlugsByLang, fetchTopicSlugsByLang, fetchPageSlugsByLang } from "@/lib/hreflang";
@@ -259,16 +260,7 @@ export default async function PageDetail({
         </ol>
       </nav>
 
-      {/* Back link */}
-      <Link
-        href={`/${lang}/${categorySlug}/${topicSlug}`}
-        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-violet-500 hover:text-violet-700 mb-4 transition-colors"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-        </svg>
-        Browse all {titleCase(topicSlug)} coloring pages
-      </Link>
+      <BackButton />
 
       <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight mb-5">
         {translation.title}

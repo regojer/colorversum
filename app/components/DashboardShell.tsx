@@ -62,7 +62,10 @@ export default function DashboardShell({ lang, categories, children }: Props) {
   // Local search input (debounced sync to URL)
   const [searchInput, setSearchInput] = useState(q);
   const [filterOpen, setFilterOpen]   = useState(false);
-  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [dragY, setDragY]             = useState(0);
+  const dragStartY = useRef(0);
+  const isDragging = useRef(false);
+  const debounce   = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Sync search input when URL changes (e.g. after nav)
   useEffect(() => { setSearchInput(searchParams.get("q") ?? ""); }, [searchParams]);
@@ -72,6 +75,24 @@ export default function DashboardShell({ lang, categories, children }: Props) {
     document.body.style.overflow = filterOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [filterOpen]);
+
+  // Swipe-to-dismiss handlers
+  function onSheetTouchStart(e: React.TouchEvent) {
+    dragStartY.current = e.touches[0].clientY;
+    isDragging.current = true;
+  }
+  function onSheetTouchMove(e: React.TouchEvent) {
+    if (!isDragging.current) return;
+    const delta = e.touches[0].clientY - dragStartY.current;
+    if (delta > 0) setDragY(delta);
+  }
+  function onSheetTouchEnd() {
+    isDragging.current = false;
+    if (dragY > 100) {
+      setFilterOpen(false);
+    }
+    setDragY(0);
+  }
 
   // ── URL helpers ────────────────────────────────────────────────────────
   const updateParam = useCallback((key: string, val: string) => {
@@ -263,12 +284,19 @@ export default function DashboardShell({ lang, categories, children }: Props) {
         />
 
         {/* Sheet */}
-        <div className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl flex flex-col
-                         max-h-[92vh] shadow-2xl transition-transform duration-300 ease-out
-                         ${filterOpen ? "translate-y-0" : "translate-y-full"}`}>
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl flex flex-col
+                       max-h-[92vh] shadow-2xl ease-out
+                       ${dragY > 0 ? "" : "transition-transform duration-300"}
+                       ${filterOpen ? "translate-y-0" : "translate-y-full"}`}
+          style={dragY > 0 ? { transform: `translateY(${dragY}px)` } : undefined}
+          onTouchStart={onSheetTouchStart}
+          onTouchMove={onSheetTouchMove}
+          onTouchEnd={onSheetTouchEnd}
+        >
 
           {/* Handle */}
-          <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="flex justify-center pt-3 pb-1 shrink-0 touch-none">
             <div className="w-10 h-1 bg-gray-300 rounded-full" />
           </div>
 
