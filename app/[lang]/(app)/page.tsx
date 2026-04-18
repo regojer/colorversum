@@ -192,11 +192,29 @@ export default async function HomePage({
             </div>
           )}
 
-          {/* Row 3: Category chips */}
-          <div className="rounded-2xl bg-white border border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-black uppercase tracking-[.12em] text-gray-400">Browse by category</p>
+          {/* Row 3: Search bar — desktop only */}
+          <form action={`/${lang}`} method="get" className="hidden lg:block">
+            <div className="rounded-2xl bg-white border border-gray-200 px-5 py-4 flex items-center gap-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="text-gray-400 shrink-0">
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input
+                name="q"
+                type="search"
+                placeholder="Search coloring pages… e.g. dragon, unicorn, mandala"
+                className="flex-1 bg-transparent text-[14px] text-gray-800 placeholder:text-gray-400 focus:outline-none"
+                autoComplete="off"
+              />
+              <button type="submit"
+                className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-bold px-5 py-2 rounded-xl transition-colors">
+                Search
+              </button>
             </div>
+          </form>
+
+          {/* Row 4: Category chips — desktop only (mobile shown below cards) */}
+          <div className="hidden lg:block rounded-2xl bg-white border border-gray-200 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[.12em] text-gray-400 mb-3">Browse by category</p>
             <div className="flex flex-wrap gap-2">
               {categories.map(cat => (
                 <Link key={cat.slug} href={`/${lang}/${cat.slug}`}
@@ -232,6 +250,26 @@ export default async function HomePage({
           browseParams={{ query: sp.q, sort: sp.sort, difficulty: sp.difficulty }}
         />
       </div>
+
+      {/* ── Browse by category — mobile only, below cards ───────── */}
+      {!hasFilters && (
+        <div className="lg:hidden px-4 sm:px-6 pb-6">
+          <div className="rounded-2xl bg-white border border-gray-200 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[.12em] text-gray-400 mb-3">Browse by category</p>
+            <div className="flex flex-wrap gap-2">
+              {categories.map(cat => (
+                <Link key={cat.slug} href={`/${lang}/${cat.slug}`}
+                  className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 text-gray-700 font-semibold
+                             text-[12.5px] px-3.5 py-2 rounded-full transition-all duration-150
+                             hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700">
+                  <span className="text-[15px] leading-none">{ce(cat.slug)}</span>
+                  {cat.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── SEO Text ─────────────────────────────────────────────── */}
       {!hasFilters && (
