@@ -134,13 +134,13 @@ export default async function HomePage({
                   </h1>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={`/${lang}?sort=new`}
+                  <Link href={`/${lang}`}
                     className="inline-flex items-center gap-1.5 bg-white text-violet-700 font-bold text-[13px] px-4 py-2.5 rounded-xl shadow-md hover:-translate-y-px transition-all">
-                    ✨ Just added
+                    Show all
                   </Link>
-                  <Link href={`/${lang}?sort=popular`}
+                  <Link href={`/${lang}/categories`}
                     className="inline-flex items-center gap-1.5 bg-white/15 border border-white/25 text-white font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-white/25 transition-all">
-                    🔥 Trending
+                    Browse by category
                   </Link>
                 </div>
               </div>
